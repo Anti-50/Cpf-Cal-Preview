@@ -1,0 +1,1309 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;}
+{\colortbl;\red255\green255\blue255;\red249\green248\blue242;\red36\green36\blue35;}
+{\*\expandedcolortbl;;\cssrgb\c98039\c97647\c96078;\cssrgb\c18824\c18824\c18039;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf2 \cb3 \expnd0\expndtw0\kerning0
+import React, \{ useState, useEffect \} from 'react';\
+import \{ LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell \} from 'recharts';\
+import \{ Lock, Crown, Star, Check, X \} from 'lucide-react';\
+\
+const CPFCalculator = () => \{\
+  // Subscription state\
+  const [subscriptionTier, setSubscriptionTier] = useState('free'); // 'free', 'premium'\
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);\
+  const [showFeatureComparison, setShowFeatureComparison] = useState(false);\
+\
+  // State variables for user inputs\
+  const [currentAge, setCurrentAge] = useState(30);\
+  const [retirementAge, setRetirementAge] = useState(65);\
+  const [monthlySalary, setMonthlySalary] = useState(5000);\
+  const [currentOABalance, setCurrentOABalance] = useState(50000);\
+  const [currentSABalance, setCurrentSABalance] = useState(20000);\
+  const [currentMABalance, setCurrentMABalance] = useState(10000);\
+  const [currentRABalance, setCurrentRABalance] = useState(0);\
+  const [cpfLifeStarted, setCpfLifeStarted] = useState(false);\
+  const [monthlyExpenses, setMonthlyExpenses] = useState(1200);\
+  const [expensesEndAge, setExpensesEndAge] = useState(55);\
+  const [retirementSumType, setRetirementSumType] = useState('FRS');\
+  \
+  // State for unemployment period\
+  const [enableUnemployment, setEnableUnemployment] = useState(false);\
+  const [unemploymentStartAge, setUnemploymentStartAge] = useState(40);\
+  const [unemploymentEndAge, setUnemploymentEndAge] = useState(45);\
+\
+  // CPF Ceiling settings\
+  const [customizeCeiling, setCustomizeCeiling] = useState(false);\
+  const [monthlySalaryCeiling, setMonthlySalaryCeiling] = useState(7400);\
+\
+  // Custom Values\
+  const [enableCustomValues, setEnableCustomValues] = useState(false);\
+  const [basicRetirementSum, setBasicRetirementSum] = useState(106500);\
+  const [fullRetirementSum, setFullRetirementSum] = useState(213000);\
+  const [enhancedRetirementSum, setEnhancedRetirementSum] = useState(426000);\
+  const [medisaveAccountCeiling, setMedisaveAccountCeiling] = useState(75500);\
+\
+  // Interest rates\
+  const OA_INTEREST_RATE = 0.025;\
+  const SA_INTEREST_RATE = 0.04;\
+  const MA_INTEREST_RATE = 0.04;\
+  const RA_INTEREST_RATE = 0.04;\
+\
+  // Projection data\
+  const [balanceProjection, setBalanceProjection] = useState([]);\
+  const [showAllYears, setShowAllYears] = useState(false);\
+  const [displayedYears, setDisplayedYears] = useState([]);\
+  const [selectedCPFLifePlan, setSelectedCPFLifePlan] = useState('Standard');\
+\
+  // Premium feature definitions\
+  const premiumFeatures = \{\
+    unemploymentPeriod: \{\
+      name: 'Unemployment Period Planning',\
+      description: 'Model career gaps and their impact on your CPF growth',\
+      benefit: 'Plan for economic uncertainties and career transitions'\
+    \},\
+    customRetirementSums: \{\
+      name: 'Custom Retirement Sums',\
+      description: 'Set your own BRS, FRS, and ERS amounts for personalized planning',\
+      benefit: 'Adapt to future policy changes and personal goals'\
+    \},\
+    extendedProjections: \{\
+      name: 'Extended Projections (Age 80+)',\
+      description: 'See your CPF balance projections beyond age 80',\
+      benefit: 'Plan for longevity and healthcare costs'\
+    \},\
+    printPDF: \{\
+      name: 'Print & Save as PDF',\
+      description: 'Export your complete CPF analysis for records',\
+      benefit: 'Professional reports for financial planning'\
+    \},\
+    advancedCPFLife: \{\
+      name: 'Advanced CPF LIFE Analysis',\
+      description: 'Compare all CPF LIFE plans with detailed breakdowns',\
+      benefit: 'Optimize your retirement income strategy'\
+    \},\
+    customCeiling: \{\
+      name: 'Custom CPF Ceilings',\
+      description: 'Adjust CPF contribution ceilings for future planning',\
+      benefit: 'Account for policy changes and income variations'\
+    \}\
+  \};\
+\
+  // Check if a feature is premium\
+  const isPremiumFeature = (featureKey) => \{\
+    return Object.keys(premiumFeatures).includes(featureKey);\
+  \};\
+\
+  // Check if user has access to premium features\
+  const hasAccessTo = (featureKey) => \{\
+    if (!isPremiumFeature(featureKey)) return true;\
+    return subscriptionTier === 'premium';\
+  \};\
+\
+  // Premium feature wrapper component\
+  const PremiumFeatureWrapper = (\{ featureKey, children, className = "", showTooltip = true \}) => \{\
+    const hasAccess = hasAccessTo(featureKey);\
+    const feature = premiumFeatures[featureKey];\
+\
+    if (hasAccess) \{\
+      return <div className=\{className\}>\{children\}</div>;\
+    \}\
+\
+    return (\
+      <div className=\{`relative $\{className\}`\}>\
+        \{/* Overlay */\}\
+        <div className="absolute inset-0 bg-gray-100 bg-opacity-80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">\
+          <div className="text-center p-4">\
+            <div className="flex items-center justify-center mb-2">\
+              <Crown className="w-6 h-6 text-yellow-600 mr-2" />\
+              <span className="font-semibold text-gray-700">Premium Feature</span>\
+            </div>\
+            \{showTooltip && (\
+              <div className="bg-white p-3 rounded-lg shadow-lg border max-w-xs">\
+                <h4 className="font-semibold text-sm mb-1">\{feature.name\}</h4>\
+                <p className="text-xs text-gray-600 mb-2">\{feature.description\}</p>\
+                <button\
+                  onClick=\{() => setShowUpgradeModal(true)\}\
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded text-xs font-medium hover:from-blue-700 hover:to-purple-700 transition-all"\
+                >\
+                  Upgrade to Premium\
+                </button>\
+              </div>\
+            )\}\
+          </div>\
+        </div>\
+        \
+        \{/* Blurred content */\}\
+        <div className="filter blur-sm pointer-events-none">\
+          \{children\}\
+        </div>\
+      </div>\
+    );\
+  \};\
+\
+  // Upgrade Modal Component\
+  const UpgradeModal = () => \{\
+    if (!showUpgradeModal) return null;\
+\
+    return (\
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">\
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">\
+          <div className="p-6">\
+            \{/* Header */\}\
+            <div className="flex justify-between items-center mb-6">\
+              <div className="flex items-center">\
+                <Crown className="w-8 h-8 text-yellow-600 mr-3" />\
+                <h2 className="text-2xl font-bold">Upgrade to Premium</h2>\
+              </div>\
+              <button\
+                onClick=\{() => setShowUpgradeModal(false)\}\
+                className="text-gray-500 hover:text-gray-700"\
+              >\
+                <X className="w-6 h-6" />\
+              </button>\
+            </div>\
+\
+            \{/* Value Proposition */\}\
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-6">\
+              <h3 className="text-xl font-bold mb-3">Unlock Advanced CPF Planning</h3>\
+              <p className="text-gray-700 mb-4">\
+                Get the complete CPF planning experience with advanced features designed for serious financial planning.\
+              </p>\
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">\
+                <div className="text-center">\
+                  <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2">\
+                    <Star className="w-8 h-8 text-blue-600" />\
+                  </div>\
+                  <h4 className="font-semibold">Professional Reports</h4>\
+                  <p className="text-sm text-gray-600">Export detailed analysis</p>\
+                </div>\
+                <div className="text-center">\
+                  <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2">\
+                    <Crown className="w-8 h-8 text-purple-600" />\
+                  </div>\
+                  <h4 className="font-semibold">Advanced Scenarios</h4>\
+                  <p className="text-sm text-gray-600">Model complex situations</p>\
+                </div>\
+                <div className="text-center">\
+                  <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2">\
+                    <Check className="w-8 h-8 text-green-600" />\
+                  </div>\
+                  <h4 className="font-semibold">Lifetime Planning</h4>\
+                  <p className="text-sm text-gray-600">Extended projections</p>\
+                </div>\
+              </div>\
+            </div>\
+\
+            \{/* Feature Comparison */\}\
+            <div className="mb-6">\
+              <h3 className="text-lg font-bold mb-4">Feature Comparison</h3>\
+              <div className="overflow-x-auto">\
+                <table className="w-full border border-gray-200 rounded-lg">\
+                  <thead className="bg-gray-50">\
+                    <tr>\
+                      <th className="text-left p-4 border-b">Feature</th>\
+                      <th className="text-center p-4 border-b">Free</th>\
+                      <th className="text-center p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">\
+                        <div className="flex items-center justify-center">\
+                          <Crown className="w-4 h-4 text-yellow-600 mr-1" />\
+                          Premium\
+                        </div>\
+                      </th>\
+                    </tr>\
+                  </thead>\
+                  <tbody>\
+                    <tr>\
+                      <td className="p-4 border-b">Basic CPF Projections</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    <tr>\
+                      <td className="p-4 border-b">CPF LIFE Estimates</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    <tr>\
+                      <td className="p-4 border-b">Projections up to Age 80</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    \{Object.entries(premiumFeatures).map(([key, feature]) => (\
+                      <tr key=\{key\}>\
+                        <td className="p-4 border-b font-medium">\{feature.name\}</td>\
+                        <td className="text-center p-4 border-b"><X className="w-5 h-5 text-red-500 mx-auto" /></td>\
+                        <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      </tr>\
+                    ))\}\
+                  </tbody>\
+                </table>\
+              </div>\
+            </div>\
+\
+            \{/* Pricing */\}\
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg mb-6">\
+              <div className="text-center">\
+                <h3 className="text-2xl font-bold mb-2">Premium Plan</h3>\
+                <div className="text-4xl font-bold mb-2">S$9.99<span className="text-lg">/month</span></div>\
+                <p className="text-blue-100 mb-4">or S$99/year (save 17%)</p>\
+                <button\
+                  onClick=\{() => \{\
+                    // Demo: simulate successful upgrade\
+                    setSubscriptionTier('premium');\
+                    setShowUpgradeModal(false);\
+                    alert('Welcome to Premium! All features are now unlocked.');\
+                  \}\}\
+                  className="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"\
+                >\
+                  Start Premium Today\
+                </button>\
+                <p className="text-sm text-blue-100 mt-2">7-day free trial \'95 Cancel anytime</p>\
+              </div>\
+            </div>\
+\
+            \{/* Demo Note */\}\
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">\
+              <p className="text-sm text-yellow-800">\
+                <strong>Demo Mode:</strong> This is a demonstration. Click "Start Premium Today" to simulate unlocking all premium features.\
+              </p>\
+            </div>\
+          </div>\
+        </div>\
+      </div>\
+    );\
+  \};\
+\
+  // Fixed input handler function - allows empty fields\
+  const createInputHandler = (setValue) => (e) => \{\
+    const value = e.target.value;\
+    \
+    // Allow empty string for better UX - don't force to 0\
+    if (value === '') \{\
+      setValue('');\
+      return;\
+    \}\
+    \
+    // Convert to number and validate\
+    const numValue = Number(value);\
+    if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0) \{\
+      setValue(numValue);\
+    \}\
+  \};\
+\
+  // CPF contribution rates by age\
+  const getContributionRates = (age) => \{\
+    if (age <= 35) return \{ employee: 0.20, employer: 0.17, total: 0.37 \};\
+    else if (age <= 45) return \{ employee: 0.20, employer: 0.17, total: 0.37 \};\
+    else if (age <= 50) return \{ employee: 0.20, employer: 0.17, total: 0.37 \};\
+    else if (age <= 55) return \{ employee: 0.20, employer: 0.17, total: 0.37 \};\
+    else if (age <= 60) return \{ employee: 0.17, employer: 0.155, total: 0.325 \};\
+    else if (age <= 65) return \{ employee: 0.115, employer: 0.12, total: 0.235 \};\
+    else if (age <= 70) return \{ employee: 0.075, employer: 0.09, total: 0.165 \};\
+    else return \{ employee: 0.05, employer: 0.075, total: 0.125 \};\
+  \};\
+\
+  // Get CPF contribution allocation percentages based on age\
+  const getAllocationPercentages = (age, raCreated, raMetFRS) => \{\
+    // Official CPF allocation percentages based on age\
+    if (age <= 35) \{\
+      return \{ oa: 0.6217, sa: 0.1621, ma: 0.2162, ra: 0 \};\
+    \} else if (age <= 45) \{\
+      return \{ oa: 0.5677, sa: 0.1891, ma: 0.2432, ra: 0 \};\
+    \} else if (age <= 50) \{\
+      return \{ oa: 0.5136, sa: 0.2162, ma: 0.2702, ra: 0 \};\
+    \} else if (age <= 55) \{\
+      return \{ oa: 0.4055, sa: 0.3108, ma: 0.2837, ra: 0 \};\
+    \} else if (age <= 60) \{\
+      if (raCreated && !raMetFRS) \{\
+        return \{ oa: 0.3694, sa: 0, ma: 0.3230, ra: 0.3076 \};\
+      \} else \{\
+        return \{ oa: 0.6770, sa: 0, ma: 0.3230, ra: 0 \};\
+      \}\
+    \} else if (age <= 65) \{\
+      if (raCreated && !raMetFRS) \{\
+        return \{ oa: 0.149, sa: 0, ma: 0.4468, ra: 0.4042 \};\
+      \} else \{\
+        return \{ oa: 0.5532, sa: 0, ma: 0.4468, ra: 0 \};\
+      \}\
+    \} else if (age <= 70) \{\
+      if (raCreated && !raMetFRS) \{\
+        return \{ oa: 0.0607, sa: 0, ma: 0.6363, ra: 0.303 \};\
+      \} else \{\
+        return \{ oa: 0.3637, sa: 0, ma: 0.6363, ra: 0 \};\
+      \}\
+    \} else \{\
+      if (raCreated && !raMetFRS) \{\
+        return \{ oa: 0.08, sa: 0, ma: 0.84, ra: 0.08 \};\
+      \} else \{\
+        return \{ oa: 0.16, sa: 0, ma: 0.84, ra: 0 \};\
+      \}\
+    \}\
+  \};\
+\
+  // Get BHS ceiling\
+  const getBHSCeiling = () => \{\
+    return medisaveAccountCeiling;\
+  \};\
+\
+  // Calculate monthly employee contribution\
+  const calculateEmployeeContribution = () => \{\
+    const rates = getContributionRates(currentAge);\
+    const applicableSalary = Math.min(monthlySalary || 0, monthlySalaryCeiling);\
+    return applicableSalary * rates.employee;\
+  \};\
+\
+  // Calculate monthly employer contribution\
+  const calculateEmployerContribution = () => \{\
+    const rates = getContributionRates(currentAge);\
+    const applicableSalary = Math.min(monthlySalary || 0, monthlySalaryCeiling);\
+    return applicableSalary * rates.employer;\
+  \};\
+\
+  // Calculate take-home pay\
+  const calculateTakeHomePay = () => \{\
+    return (monthlySalary || 0) - calculateEmployeeContribution();\
+  \};\
+\
+  // Generate projection data\
+  useEffect(() => \{\
+    const projection = [];\
+    let oa = currentOABalance;\
+    let sa = currentSABalance;\
+    let ma = currentMABalance;\
+    let ra = currentRABalance;\
+    let raCreated = currentAge >= 55;\
+\
+    const retirementSumAmount = \
+      retirementSumType === 'BRS' ? basicRetirementSum :\
+      retirementSumType === 'FRS' ? fullRetirementSum : enhancedRetirementSum;\
+\
+    let isRATransferredToCPFLIFE = false;\
+\
+    // Limit projections for free users\
+    const maxAge = hasAccessTo('extendedProjections') ? 100 : 80;\
+\
+    for (let age = currentAge; age <= maxAge; age++) \{\
+      const isUnemployed = enableUnemployment && age >= unemploymentStartAge && age < unemploymentEndAge;\
+      \
+      if (!isUnemployed && age < 80) \{\
+        const rates = getContributionRates(age);\
+        const applicableSalary = Math.min(monthlySalary || 0, monthlySalaryCeiling);\
+        const totalContribution = applicableSalary * rates.total;\
+        \
+        let raMetFRS;\
+        if (currentAge >= 65) \{\
+          raMetFRS = cpfLifeStarted || ra >= retirementSumAmount;\
+        \} else \{\
+          raMetFRS = ra >= retirementSumAmount;\
+        \}\
+        \
+        const allocations = getAllocationPercentages(age, raCreated, raMetFRS);\
+        \
+        const oaAllocation = allocations.oa * totalContribution;\
+        const saAllocation = allocations.sa * totalContribution;\
+        const maAllocation = allocations.ma * totalContribution;\
+        const raAllocation = allocations.ra * totalContribution;\
+        \
+        oa += oaAllocation * 12;\
+        sa += saAllocation * 12;\
+        ma += maAllocation * 12;\
+        if (raCreated) ra += raAllocation * 12;\
+        \
+        const bhsCeiling = getBHSCeiling();\
+        if (ma > bhsCeiling) \{\
+          const maExcess = ma - bhsCeiling;\
+          ma = bhsCeiling;\
+          \
+          if (raCreated && ra < retirementSumAmount) \{\
+            ra += maExcess;\
+            \
+            if (ra > retirementSumAmount) \{\
+              oa += (ra - retirementSumAmount);\
+              ra = retirementSumAmount;\
+            \}\
+          \} else \{\
+            if (age < 55) \{\
+              sa += maExcess;\
+            \} else \{\
+              oa += maExcess;\
+            \}\
+          \}\
+        \}\
+      \}\
+      \
+      if (age < expensesEndAge) \{\
+        oa -= (monthlyExpenses || 0) * 12;\
+        oa = Math.max(0, oa);\
+      \}\
+      \
+      oa *= (1 + OA_INTEREST_RATE);\
+      sa *= (1 + SA_INTEREST_RATE);\
+      ma *= (1 + MA_INTEREST_RATE);\
+      \
+      if (raCreated && !isRATransferredToCPFLIFE) \{\
+        ra *= (1 + RA_INTEREST_RATE);\
+      \}\
+      \
+      if (age === 55 && !raCreated) \{\
+        raCreated = true;\
+        \
+        if (sa >= retirementSumAmount) \{\
+          ra = retirementSumAmount;\
+          oa += (sa - retirementSumAmount);\
+          sa = 0;\
+        \} else \{\
+          ra = Math.min(sa + oa, retirementSumAmount);\
+          const oaContribution = Math.min(oa, retirementSumAmount - sa);\
+          oa -= oaContribution;\
+          sa = 0;\
+        \}\
+      \}\
+      \
+      if (currentAge < 65 && age === 65 && raCreated && !isRATransferredToCPFLIFE) \{\
+        const targetRetirementSum = \
+          retirementSumType === 'BRS' ? basicRetirementSum :\
+          retirementSumType === 'FRS' ? fullRetirementSum : enhancedRetirementSum;\
+        \
+        if (ra < targetRetirementSum) \{\
+          const shortfall = targetRetirementSum - ra;\
+          const maxOATransfer = oa * 0.8;\
+          const oaTransfer = Math.min(shortfall, maxOATransfer);\
+          \
+          if (oaTransfer > 0) \{\
+            ra += oaTransfer;\
+            oa -= oaTransfer;\
+          \}\
+        \}\
+      \}\
+      \
+      if (age >= 65 && cpfLifeStarted && raCreated) \{\
+        ra = 0;\
+        isRATransferredToCPFLIFE = true;\
+      \}\
+      \
+      const targetRetirementSum = \
+        retirementSumType === 'BRS' ? basicRetirementSum :\
+        retirementSumType === 'FRS' ? fullRetirementSum : enhancedRetirementSum;\
+      \
+      if (currentAge < 65 && age >= retirementAge && raCreated && ra >= targetRetirementSum && !isRATransferredToCPFLIFE) \{\
+        ra = 0;\
+        isRATransferredToCPFLIFE = true;\
+      \}\
+      \
+      if (currentAge >= 65 && age === 70 && raCreated && !cpfLifeStarted && !isRATransferredToCPFLIFE) \{\
+        ra = 0;\
+        isRATransferredToCPFLIFE = true;\
+      \}\
+      \
+      if (isRATransferredToCPFLIFE) \{\
+        ra = 0;\
+      \}\
+      \
+      if (age >= 65) \{\
+        const maWithdrawal = ma * 0.03;\
+        ma -= maWithdrawal;\
+      \}\
+      \
+      projection.push(\{\
+        age,\
+        oa: Math.round(oa),\
+        sa: raCreated ? 0 : Math.round(sa),\
+        ma: Math.round(ma),\
+        ra: Math.round(ra),\
+        total: Math.round(oa + (raCreated ? 0 : sa) + ma + ra)\
+      \});\
+    \}\
+    \
+    setBalanceProjection(projection);\
+  \}, [\
+    currentAge, retirementAge, monthlySalary || 0, currentOABalance || 0, currentSABalance || 0, \
+    currentMABalance || 0, currentRABalance || 0, cpfLifeStarted, monthlyExpenses || 0, expensesEndAge,\
+    retirementSumType, enableUnemployment, unemploymentStartAge, unemploymentEndAge,\
+    customizeCeiling, monthlySalaryCeiling || 0, enableCustomValues,\
+    basicRetirementSum || 0, fullRetirementSum || 0, enhancedRetirementSum || 0, medisaveAccountCeiling || 0,\
+    subscriptionTier\
+  ]);\
+\
+  // Filter displayed years for the table\
+  useEffect(() => \{\
+    if (balanceProjection.length === 0) return;\
+    \
+    if (showAllYears) \{\
+      setDisplayedYears(balanceProjection);\
+    \} else \{\
+      const keyYears = [currentAge];\
+      for (let age = Math.ceil(currentAge/5)*5; age <= (hasAccessTo('extendedProjections') ? 100 : 80); age += 5) \{\
+        keyYears.push(age);\
+      \}\
+      if (!keyYears.includes(retirementAge)) \{\
+        keyYears.push(retirementAge);\
+      \}\
+      if (!keyYears.includes(55)) \{\
+        keyYears.push(55);\
+      \}\
+      keyYears.sort((a, b) => a - b);\
+      \
+      setDisplayedYears(balanceProjection.filter(year => keyYears.includes(year.age)));\
+    \}\
+  \}, [balanceProjection, showAllYears, currentAge, retirementAge, subscriptionTier]);\
+\
+  // Format currency\
+  const formatCurrency = (value) => \{\
+    return new Intl.NumberFormat('en-SG', \{\
+      style: 'currency',\
+      currency: 'SGD',\
+      minimumFractionDigits: 0,\
+      maximumFractionDigits: 0\
+    \}).format(value);\
+  \};\
+\
+  // Calculate monthly CPF LIFE payout estimate\
+  const calculateMonthlyPayout = () => \{\
+    const retirementEntry = balanceProjection.find(item => item.age === retirementAge);\
+    if (!retirementEntry) return \{ min: 0, max: 0, entrySum: 0 \};\
+    \
+    let cpfLifeEntrySum = 0;\
+    \
+    if (retirementAge < 55) \{\
+      cpfLifeEntrySum = retirementEntry.total;\
+    \} else if (retirementAge >= 55 && retirementAge < 65) \{\
+      cpfLifeEntrySum = retirementEntry.ra || 0;\
+    \} else \{\
+      cpfLifeEntrySum = retirementEntry.ra || 0;\
+      \
+      if (cpfLifeEntrySum === 0 && retirementEntry.total > 0) \{\
+        const age64Entry = balanceProjection.find(item => item.age === 64);\
+        if (age64Entry && age64Entry.ra > 0) \{\
+          cpfLifeEntrySum = age64Entry.ra;\
+        \} else \{\
+          cpfLifeEntrySum = retirementEntry.total * 0.5;\
+        \}\
+      \}\
+    \}\
+    \
+    if (cpfLifeEntrySum <= 0) return \{ min: 0, max: 0, entrySum: 0 \};\
+    \
+    let minPayout, maxPayout;\
+    \
+    switch(selectedCPFLifePlan) \{\
+      case 'Basic':\
+        minPayout = cpfLifeEntrySum * 0.0042;\
+        maxPayout = cpfLifeEntrySum * 0.0048;\
+        break;\
+      case 'Escalating':\
+        minPayout = cpfLifeEntrySum * 0.0038;\
+        maxPayout = cpfLifeEntrySum * 0.0044;\
+        break;\
+      case 'Standard':\
+      default:\
+        minPayout = cpfLifeEntrySum * 0.0048;\
+        maxPayout = cpfLifeEntrySum * 0.0055;\
+    \}\
+    \
+    return \{\
+      min: Math.round(minPayout),\
+      max: Math.round(maxPayout),\
+      entrySum: Math.round(cpfLifeEntrySum)\
+    \};\
+  \};\
+\
+  const payoutEstimate = calculateMonthlyPayout();\
+  \
+  // Prepare data for stacked bar chart\
+  const prepareChartData = () => \{\
+    return balanceProjection.filter(item => \
+      item.age === currentAge || item.age % 5 === 0 || item.age === retirementAge\
+    ).map(item => (\{\
+      age: item.age,\
+      "Ordinary Account": item.oa,\
+      "Special Account": item.sa,\
+      "MediSave Account": item.ma,\
+      "Retirement Account": item.ra\
+    \}));\
+  \};\
+\
+  const employeeContribution = calculateEmployeeContribution();\
+  const employerContribution = calculateEmployerContribution();\
+  const takeHomePay = calculateTakeHomePay();\
+  const annualTakeHomePay = takeHomePay * 12;\
+  \
+  return (\
+    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">\
+      \{/* Header with subscription status */\}\
+      <div className="text-center mb-8">\
+        <div className="flex justify-between items-center mb-4">\
+          <div className="flex items-center space-x-2">\
+            \{subscriptionTier === 'premium' ? (\
+              <div className="flex items-center bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 py-1 rounded-full text-sm font-medium">\
+                <Crown className="w-4 h-4 mr-1" />\
+                Premium Active\
+              </div>\
+            ) : (\
+              <div className="flex items-center bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">\
+                Free Plan\
+              </div>\
+            )\}\
+          </div>\
+          <div className="flex space-x-2">\
+            \{subscriptionTier === 'free' && (\
+              <button\
+                onClick=\{() => setShowUpgradeModal(true)\}\
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"\
+              >\
+                Upgrade to Premium\
+              </button>\
+            )\}\
+            <button\
+              onClick=\{() => setShowFeatureComparison(true)\}\
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700"\
+            >\
+              Compare Plans\
+            </button>\
+          </div>\
+        </div>\
+        \
+        <h1 className="text-2xl font-bold text-blue-700 mb-2">Singapore CPF Calculator (2025)</h1>\
+        <p className="text-sm text-gray-500">\'a9 2025 Your Partner in Finance, Chen Hong. All rights reserved.</p>\
+        \
+        \{subscriptionTier === 'free' && (\
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">\
+            <div className="flex items-center justify-center mb-2">\
+              <Crown className="w-5 h-5 text-yellow-600 mr-2" />\
+              <span className="font-semibold text-blue-800">Unlock Premium Features</span>\
+            </div>\
+            <p className="text-sm text-blue-700 mb-3">\
+              Get unemployment planning, custom retirement sums, extended projections, and more!\
+            </p>\
+            <button\
+              onClick=\{() => setShowUpgradeModal(true)\}\
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"\
+            >\
+              View Premium Features\
+            </button>\
+          </div>\
+        )\}\
+      </div>\
+      \
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">\
+        \{/* Basic Information */\}\
+        <div className="bg-white rounded-lg border p-4">\
+          <h2 className="text-xl font-bold mb-4">Basic Information</h2>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Current Age</label>\
+            <input\
+              type="number"\
+              value=\{currentAge\}\
+              onChange=\{createInputHandler(setCurrentAge)\}\
+              className="w-full border rounded px-3 py-2"\
+              min="16"\
+              max="100"\
+            />\
+            <p className="text-sm text-gray-500 mt-1">RA will be created at age 55.</p>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Retirement Age</label>\
+            <input\
+              type="number"\
+              value=\{retirementAge\}\
+              onChange=\{createInputHandler(setRetirementAge)\}\
+              className="w-full border rounded px-3 py-2"\
+              min="55"\
+              max="100"\
+            />\
+            <p className="text-sm text-gray-500 mt-1">CPF LIFE starts</p>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Monthly Salary</label>\
+            <div className="relative flex items-center">\
+              <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+              <input\
+                type="number"\
+                value=\{monthlySalary\}\
+                onChange=\{createInputHandler(setMonthlySalary)\}\
+                className="w-full border rounded pl-10 pr-3 py-2"\
+                min="0"\
+              />\
+            </div>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Current OA Balance</label>\
+            <div className="relative flex items-center">\
+              <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+              <input\
+                type="number"\
+                value=\{currentOABalance\}\
+                onChange=\{createInputHandler(setCurrentOABalance)\}\
+                className="w-full border rounded pl-10 pr-3 py-2"\
+                min="0"\
+              />\
+            </div>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Current SA Balance</label>\
+            <div className="relative flex items-center">\
+              <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+              <input\
+                type="number"\
+                value=\{currentSABalance\}\
+                onChange=\{createInputHandler(setCurrentSABalance)\}\
+                className="w-full border rounded pl-10 pr-3 py-2"\
+                min="0"\
+              />\
+            </div>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Current MA Balance</label>\
+            <div className="relative flex items-center">\
+              <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+              <input\
+                type="number"\
+                value=\{currentMABalance\}\
+                onChange=\{createInputHandler(setCurrentMABalance)\}\
+                className="w-full border rounded pl-10 pr-3 py-2"\
+                min="0"\
+              />\
+            </div>\
+          </div>\
+          \
+          \{currentAge >= 55 && (\
+            <>\
+              <div className="mb-4">\
+                <label className="block text-gray-700 mb-1">Current RA Balance</label>\
+                <div className="relative flex items-center">\
+                  <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+                  <input\
+                    type="number"\
+                    value=\{currentRABalance\}\
+                    onChange=\{createInputHandler(setCurrentRABalance)\}\
+                    className="w-full border rounded pl-10 pr-3 py-2"\
+                    min="0"\
+                  />\
+                </div>\
+                <p className="text-sm text-gray-500 mt-1">Enter your current RA balance</p>\
+              </div>\
+              \
+              \{currentAge >= 65 && (\
+                <div className="mb-4">\
+                  <div className="flex items-center justify-between">\
+                    <div>\
+                      <label className="block text-gray-700 mb-1">CPF LIFE Payout Status</label>\
+                      <p className="text-sm text-gray-500">Have you started receiving CPF LIFE monthly payouts?</p>\
+                    </div>\
+                    <div className="flex items-center">\
+                      <span className="mr-2 text-sm">Started</span>\
+                      <div \
+                        className=\{`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer $\{cpfLifeStarted ? 'bg-green-600' : 'bg-gray-300'\}`\}\
+                        onClick=\{() => setCpfLifeStarted(!cpfLifeStarted)\}\
+                      >\
+                        <div className=\{`bg-white w-4 h-4 rounded-full shadow-md transform $\{cpfLifeStarted ? 'translate-x-6' : ''\}`\}></div>\
+                      </div>\
+                    </div>\
+                  </div>\
+                </div>\
+              )\}\
+            </>\
+          )\}\
+        </div>\
+        \
+        \{/* Monthly Expenses and Retirement Sum Type */\}\
+        <div className="bg-white rounded-lg border p-4">\
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Monthly Expenses (OA)</label>\
+            <div className="relative flex items-center">\
+              <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+              <input\
+                type="number"\
+                value=\{monthlyExpenses\}\
+                onChange=\{createInputHandler(setMonthlyExpenses)\}\
+                className="w-full border rounded pl-10 pr-3 py-2"\
+                min="0"\
+              />\
+            </div>\
+          </div>\
+          \
+          <div className="mb-4">\
+            <label className="block text-gray-700 mb-1">Expenses End Age</label>\
+            <input\
+              type="number"\
+              value=\{expensesEndAge\}\
+              onChange=\{createInputHandler(setExpensesEndAge)\}\
+              className="w-full border rounded px-3 py-2"\
+              min=\{currentAge\}\
+              max="100"\
+            />\
+          </div>\
+          \
+          <div className="mb-6">\
+            <label className="block text-gray-700 mb-1">Retirement Sum Type</label>\
+            <select\
+              value=\{retirementSumType\}\
+              onChange=\{(e) => setRetirementSumType(e.target.value)\}\
+              className="w-full border rounded px-3 py-2"\
+            >\
+              <option value="BRS">Basic (BRS)</option>\
+              <option value="FRS">Full (FRS)</option>\
+              <option value="ERS">Enhanced (ERS)</option>\
+            </select>\
+          </div>\
+          \
+          \{/* Unemployment Period - Premium Feature */\}\
+          <PremiumFeatureWrapper featureKey="unemploymentPeriod">\
+            <div className="mt-4">\
+              <h3 className="text-lg font-bold mb-2">Unemployment Period</h3>\
+              <div className="flex items-center justify-between mb-4">\
+                <span>Enable Unemployment Period</span>\
+                <div \
+                  className=\{`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer $\{enableUnemployment ? 'bg-blue-600' : 'bg-gray-300'\}`\}\
+                  onClick=\{() => hasAccessTo('unemploymentPeriod') && setEnableUnemployment(!enableUnemployment)\}\
+                >\
+                  <div className=\{`bg-white w-4 h-4 rounded-full shadow-md transform $\{enableUnemployment ? 'translate-x-6' : ''\}`\}></div>\
+                </div>\
+              </div>\
+              \
+              \{enableUnemployment && (\
+                <>\
+                  <div className="mb-4">\
+                    <label className="block text-gray-700 mb-1">Unemployment Start Age</label>\
+                    <input\
+                      type="number"\
+                      value=\{unemploymentStartAge\}\
+                      onChange=\{createInputHandler(setUnemploymentStartAge)\}\
+                      className="w-full border rounded px-3 py-2"\
+                      min=\{currentAge\}\
+                      max=\{unemploymentEndAge - 1\}\
+                    />\
+                  </div>\
+                  \
+                  <div className="mb-4">\
+                    <label className="block text-gray-700 mb-1">Unemployment End Age</label>\
+                    <input\
+                      type="number"\
+                      value=\{unemploymentEndAge\}\
+                      onChange=\{createInputHandler(setUnemploymentEndAge)\}\
+                      className="w-full border rounded px-3 py-2"\
+                      min=\{unemploymentStartAge + 1\}\
+                      max="100"\
+                    />\
+                  </div>\
+                  \
+                  <div className="bg-yellow-50 border border-yellow-100 rounded-md p-3 text-yellow-800 text-sm">\
+                    During this period (ages \{unemploymentStartAge\} to \{unemploymentEndAge\}), no CPF contributions will be made.\
+                  </div>\
+                </>\
+              )\}\
+            </div>\
+          </PremiumFeatureWrapper>\
+        </div>\
+        \
+        \{/* CPF Salary Ceiling - Premium Feature */\}\
+        <PremiumFeatureWrapper featureKey="customCeiling" className="bg-white rounded-lg border p-4">\
+          <div className="flex items-center justify-between mb-4">\
+            <h3 className="text-lg font-bold">CPF Salary Ceiling</h3>\
+            <div className="flex items-center">\
+              <span className="mr-2">Customize Ceiling</span>\
+              <div \
+                className=\{`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer $\{customizeCeiling ? 'bg-blue-600' : 'bg-gray-300'\}`\}\
+                onClick=\{() => hasAccessTo('customCeiling') && setCustomizeCeiling(!customizeCeiling)\}\
+              >\
+                <div className=\{`bg-white w-4 h-4 rounded-full shadow-md transform $\{customizeCeiling ? 'translate-x-6' : ''\}`\}></div>\
+              </div>\
+            </div>\
+          </div>\
+          \
+          \{customizeCeiling && (\
+            <div className="mb-4">\
+              <label className="block text-gray-700 mb-1">Monthly Salary Ceiling for CPF</label>\
+              <div className="relative flex items-center">\
+                <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+                <input\
+                  type="number"\
+                  value=\{monthlySalaryCeiling\}\
+                  onChange=\{createInputHandler(setMonthlySalaryCeiling)\}\
+                  className="w-full border rounded pl-10 pr-3 py-2"\
+                  min="0"\
+                />\
+              </div>\
+            </div>\
+          )\}\
+          \
+          <div className="bg-blue-50 border border-blue-100 rounded-md p-4">\
+            <h4 className="text-lg font-semibold text-blue-700 mb-2">Current Monthly Salary Calculation</h4>\
+            \
+            <div className="grid grid-cols-2 gap-4">\
+              <div className="text-gray-700">Your Monthly Salary:</div>\
+              <div className="text-right font-semibold">\{formatCurrency(monthlySalary || 0)\}</div>\
+              \
+              <div className="text-gray-700">Employee Contribution:</div>\
+              <div className="text-right font-semibold text-red-600">-\{formatCurrency(employeeContribution)\}</div>\
+              \
+              <div className="text-gray-700">Take-Home Monthly Pay:</div>\
+              <div className="text-right font-semibold text-green-600">\{formatCurrency(takeHomePay)\}</div>\
+            </div>\
+          </div>\
+        </PremiumFeatureWrapper>\
+        \
+        \{/* Custom Values - Premium Feature */\}\
+        <PremiumFeatureWrapper featureKey="customRetirementSums" className="bg-white rounded-lg border p-4">\
+          <div className="flex items-center justify-between mb-4">\
+            <h3 className="text-lg font-bold">Custom Values</h3>\
+            <div className="flex items-center">\
+              <span className="mr-2">Enable Custom Values</span>\
+              <div \
+                className=\{`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer $\{enableCustomValues ? 'bg-blue-600' : 'bg-gray-300'\}`\}\
+                onClick=\{() => hasAccessTo('customRetirementSums') && setEnableCustomValues(!enableCustomValues)\}\
+              >\
+                <div className=\{`bg-white w-4 h-4 rounded-full shadow-md transform $\{enableCustomValues ? 'translate-x-6' : ''\}`\}></div>\
+              </div>\
+            </div>\
+          </div>\
+          \
+          \{enableCustomValues && (\
+            <>\
+              <div className="mb-4">\
+                <label className="block text-gray-700 mb-1">Basic Retirement Sum (BRS)</label>\
+                <div className="relative flex items-center">\
+                  <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+                  <input\
+                    type="number"\
+                    value=\{basicRetirementSum\}\
+                    onChange=\{createInputHandler(setBasicRetirementSum)\}\
+                    className="w-full border rounded pl-10 pr-3 py-2"\
+                    min="0"\
+                  />\
+                </div>\
+              </div>\
+              \
+              <div className="mb-4">\
+                <label className="block text-gray-700 mb-1">Full Retirement Sum (FRS)</label>\
+                <div className="relative flex items-center">\
+                  <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+                  <input\
+                    type="number"\
+                    value=\{fullRetirementSum\}\
+                    onChange=\{createInputHandler(setFullRetirementSum)\}\
+                    className="w-full border rounded pl-10 pr-3 py-2"\
+                    min="0"\
+                  />\
+                </div>\
+              </div>\
+              \
+              <div className="mb-4">\
+                <label className="block text-gray-700 mb-1">Enhanced Retirement Sum (ERS)</label>\
+                <div className="relative flex items-center">\
+                  <div className="absolute left-0 pl-3 text-gray-500 flex items-center h-full">S$</div>\
+                  <input\
+                    type="number"\
+                    value=\{enhancedRetirementSum\}\
+                    onChange=\{createInputHandler(setEnhancedRetirementSum)\}\
+                    className="w-full border rounded pl-10 pr-3 py-2"\
+                    min="0"\
+                  />\
+                </div>\
+              </div>\
+            </>\
+          )\}\
+        </PremiumFeatureWrapper>\
+      </div>\
+      \
+      \{/* CPF Balance Projection Chart */\}\
+      <div className="bg-white rounded-lg border p-4 mt-6 mb-6">\
+        <div className="flex justify-between items-center mb-4">\
+          <h2 className="text-xl font-bold">CPF Balance Projection</h2>\
+          \{!hasAccessTo('extendedProjections') && (\
+            <div className="flex items-center text-sm text-gray-600">\
+              <Lock className="w-4 h-4 mr-1" />\
+              Limited to age 80\
+              <button\
+                onClick=\{() => setShowUpgradeModal(true)\}\
+                className="ml-2 text-blue-600 hover:text-blue-800 underline"\
+              >\
+                Unlock full projections\
+              </button>\
+            </div>\
+          )\}\
+        </div>\
+        \
+        <div className="h-64 md:h-96">\
+          <ResponsiveContainer width="100%" height="100%">\
+            <BarChart data=\{prepareChartData()\} margin=\{\{ top: 20, right: 30, left: 30, bottom: 5 \}\}>\
+              <CartesianGrid strokeDasharray="3 3" />\
+              <XAxis dataKey="age" label=\{\{ value: 'Age', position: 'insideBottom', offset: -5 \}\} />\
+              <YAxis tickFormatter=\{(value) => `S$\{value / 1000\}k`\} \
+                     label=\{\{ value: 'Balance', angle: -90, position: 'insideLeft', offset: -5 \}\} />\
+              <Tooltip formatter=\{(value) => [`S$\{value.toLocaleString()\}`, '']\} />\
+              <Legend />\
+              <Bar dataKey="Ordinary Account" stackId="a" fill="#4299e1" />\
+              <Bar dataKey="Special Account" stackId="a" fill="#68d391" />\
+              <Bar dataKey="MediSave Account" stackId="a" fill="#ed8936" />\
+              <Bar dataKey="Retirement Account" stackId="a" fill="#9f7aea" />\
+            </BarChart>\
+          </ResponsiveContainer>\
+        </div>\
+        \
+        \{!hasAccessTo('extendedProjections') && (\
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">\
+            <div className="flex items-center">\
+              <Crown className="w-5 h-5 text-yellow-600 mr-2" />\
+              <span className="text-sm text-yellow-800">\
+                <strong>Upgrade to Premium</strong> to see projections beyond age 80 and plan for your entire lifetime.\
+              </span>\
+            </div>\
+          </div>\
+        )\}\
+      </div>\
+      \
+      \{/* Year-by-Year CPF Balances with Premium Features */\}\
+      <div className="bg-white rounded-lg border p-4 mt-6">\
+        <div className="flex justify-between items-center mb-4">\
+          <h2 className="text-xl font-bold">Year-by-Year CPF Balances</h2>\
+          <div className="flex items-center space-x-2">\
+            <button \
+              className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-4 rounded"\
+              onClick=\{() => setShowAllYears(!showAllYears)\}\
+            >\
+              \{showAllYears ? "Show Key Years" : "Show All Years"\}\
+            </button>\
+            \{!hasAccessTo('extendedProjections') && (\
+              <div className="flex items-center text-sm text-gray-600">\
+                <Lock className="w-4 h-4 mr-1" />\
+                Age 80 limit\
+              </div>\
+            )\}\
+          </div>\
+        </div>\
+        \
+        <div className="overflow-x-auto">\
+          <table className="min-w-full bg-white">\
+            <thead className="bg-gray-100">\
+              <tr>\
+                <th className="py-2 px-4 border-b text-left">AGE</th>\
+                <th className="py-2 px-4 border-b text-right">OA BALANCE</th>\
+                <th className="py-2 px-4 border-b text-right">SA BALANCE</th>\
+                <th className="py-2 px-4 border-b text-right">MA BALANCE</th>\
+                <th className="py-2 px-4 border-b text-right">RA BALANCE</th>\
+              </tr>\
+            </thead>\
+            <tbody>\
+              \{displayedYears.map((year) => \{\
+                const isCurrentAge = year.age === currentAge;\
+                const isRetirementAge = year.age === retirementAge;\
+                const isRA55 = year.age === 55;\
+                \
+                let rowClass = "";\
+                let specialNote = "";\
+                \
+                if (isCurrentAge) \{\
+                  rowClass = "bg-gray-50";\
+                \}\
+                if (isRA55) \{\
+                  rowClass = "bg-blue-50";\
+                  specialNote = "RA created";\
+                \}\
+                if (isRetirementAge) \{\
+                  rowClass = "bg-yellow-50";\
+                  specialNote = "Retirement";\
+                \}\
+                \
+                const maBalance = Math.min(year.ma, medisaveAccountCeiling);\
+                \
+                return (\
+                  <tr key=\{year.age\} className=\{rowClass\}>\
+                    <td className="py-2 px-4 border-b">\
+                      \{year.age\} \{specialNote && <span className="text-blue-600 text-xs ml-1">\{specialNote\}</span>\}\
+                    </td>\
+                    <td className="py-2 px-4 border-b text-right">\
+                      \{year.oa === 0 ? '$0' : formatCurrency(year.oa)\}\
+                    </td>\
+                    <td className="py-2 px-4 border-b text-right">\
+                      \{year.sa === 0 ? '$0' : year.age >= 55 ? 'Account closed' : formatCurrency(year.sa)\}\
+                    </td>\
+                    <td className="py-2 px-4 border-b text-right">\
+                      \{formatCurrency(maBalance)\}\
+                    </td>\
+                    <td className="py-2 px-4 border-b text-right">\
+                      \{year.age < 55 ? 'Not created yet' : \
+                       year.ra === 0 && year.age >= retirementAge ? 'Transferred to CPF LIFE' : \
+                       formatCurrency(year.ra)\}\
+                    </td>\
+                  </tr>\
+                );\
+              \})\}\
+            </tbody>\
+          </table>\
+        </div>\
+      </div>\
+\
+      \{/* Advanced CPF LIFE Analysis - Premium Feature */\}\
+      <PremiumFeatureWrapper featureKey="advancedCPFLife" className="bg-white rounded-lg border p-4 mt-6">\
+        <h2 className="text-xl font-bold mb-4">Advanced CPF LIFE Analysis</h2>\
+        \
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">\
+          \{['Basic', 'Standard', 'Escalating'].map((plan) => (\
+            <div key=\{plan\} className=\{`p-4 border rounded-lg $\{selectedCPFLifePlan === plan ? 'border-blue-500 bg-blue-50' : 'border-gray-200'\}`\}>\
+              <h3 className="font-bold mb-2">\{plan\} Plan</h3>\
+              <div className="text-2xl font-bold text-green-600 mb-1">\
+                \{plan === 'Basic' && formatCurrency(Math.round(payoutEstimate.entrySum * 0.0045))\}\
+                \{plan === 'Standard' && formatCurrency(Math.round(payoutEstimate.entrySum * 0.0052))\}\
+                \{plan === 'Escalating' && formatCurrency(Math.round(payoutEstimate.entrySum * 0.0041))\}\
+              </div>\
+              <p className="text-sm text-gray-600">Monthly payout estimate</p>\
+              <button\
+                onClick=\{() => hasAccessTo('advancedCPFLife') && setSelectedCPFLifePlan(plan)\}\
+                className=\{`mt-2 w-full py-2 px-4 rounded text-sm font-medium $\{\
+                  selectedCPFLifePlan === plan \
+                    ? 'bg-blue-600 text-white' \
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'\
+                \}`\}\
+              >\
+                \{selectedCPFLifePlan === plan ? 'Selected' : 'Select Plan'\}\
+              </button>\
+            </div>\
+          ))\}\
+        </div>\
+        \
+        <div className="bg-blue-50 p-4 rounded-lg">\
+          <h4 className="font-bold mb-2">Plan Comparison Benefits</h4>\
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">\
+            <div>\
+              <h5 className="font-semibold">Basic Plan</h5>\
+              <ul className="list-disc list-inside text-gray-600">\
+                <li>Higher bequest</li>\
+                <li>Lower monthly payout</li>\
+                <li>Good for supplementary income</li>\
+              </ul>\
+            </div>\
+            <div>\
+              <h5 className="font-semibold">Standard Plan</h5>\
+              <ul className="list-disc list-inside text-gray-600">\
+                <li>Balanced approach</li>\
+                <li>Recommended for most</li>\
+                <li>Moderate bequest</li>\
+              </ul>\
+            </div>\
+            <div>\
+              <h5 className="font-semibold">Escalating Plan</h5>\
+              <ul className="list-disc list-inside text-gray-600">\
+                <li>2% annual increase</li>\
+                <li>Inflation protection</li>\
+                <li>Lower initial payout</li>\
+              </ul>\
+            </div>\
+          </div>\
+        </div>\
+      </PremiumFeatureWrapper>\
+\
+      \{/* Print/PDF Feature - Premium */\}\
+      <div className="mt-8 mb-4 text-center">\
+        <PremiumFeatureWrapper featureKey="printPDF" showTooltip=\{false\}>\
+          <button \
+            onClick=\{() => \{\
+              if (hasAccessTo('printPDF')) \{\
+                window.print();\
+              \} else \{\
+                setShowUpgradeModal(true);\
+              \}\
+            \}\}\
+            className=\{`font-bold py-2 px-6 rounded-lg shadow-md $\{\
+              hasAccessTo('printPDF') \
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'\
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'\
+            \}`\}\
+          >\
+            \{hasAccessTo('printPDF') ? 'Print / Save as PDF' : '\uc0\u55357 \u56594  Print / Save as PDF (Premium)'\}\
+          </button>\
+        </PremiumFeatureWrapper>\
+      </div>\
+      \
+      <div className="text-center text-gray-500 text-sm mt-6">\
+        \'a9 2025 Your Partner in Finance Chen Hong. All rights reserved.\
+      </div>\
+\
+      \{/* Modals */\}\
+      <UpgradeModal />\
+      \
+      \{/* Feature Comparison Modal */\}\
+      \{showFeatureComparison && (\
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">\
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">\
+            <div className="p-6">\
+              <div className="flex justify-between items-center mb-6">\
+                <h2 className="text-2xl font-bold">Feature Comparison</h2>\
+                <button\
+                  onClick=\{() => setShowFeatureComparison(false)\}\
+                  className="text-gray-500 hover:text-gray-700"\
+                >\
+                  <X className="w-6 h-6" />\
+                </button>\
+              </div>\
+\
+              <div className="overflow-x-auto">\
+                <table className="w-full border border-gray-200 rounded-lg">\
+                  <thead className="bg-gray-50">\
+                    <tr>\
+                      <th className="text-left p-4 border-b">Feature</th>\
+                      <th className="text-center p-4 border-b">Free</th>\
+                      <th className="text-center p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">\
+                        <div className="flex items-center justify-center">\
+                          <Crown className="w-4 h-4 text-yellow-600 mr-1" />\
+                          Premium\
+                        </div>\
+                      </th>\
+                    </tr>\
+                  </thead>\
+                  <tbody>\
+                    <tr>\
+                      <td className="p-4 border-b">Basic CPF Projections</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    <tr>\
+                      <td className="p-4 border-b">CPF LIFE Estimates</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    <tr>\
+                      <td className="p-4 border-b">Projections up to Age 80</td>\
+                      <td className="text-center p-4 border-b"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                    </tr>\
+                    \{Object.entries(premiumFeatures).map(([key, feature]) => (\
+                      <tr key=\{key\}>\
+                        <td className="p-4 border-b font-medium">\{feature.name\}</td>\
+                        <td className="text-center p-4 border-b"><X className="w-5 h-5 text-red-500 mx-auto" /></td>\
+                        <td className="text-center p-4 border-b bg-blue-50"><Check className="w-5 h-5 text-green-600 mx-auto" /></td>\
+                      </tr>\
+                    ))\}\
+                  </tbody>\
+                </table>\
+              </div>\
+\
+              <div className="mt-6 text-center">\
+                \{subscriptionTier === 'free' && (\
+                  <button\
+                    onClick=\{() => \{\
+                      setShowFeatureComparison(false);\
+                      setShowUpgradeModal(true);\
+                    \}\}\
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-all"\
+                  >\
+                    Upgrade to Premium\
+                  </button>\
+                )\}\
+              </div>\
+            </div>\
+          </div>\
+        </div>\
+      )\}\
+    </div>\
+  );\
+\};\
+\
+export default CPFCalculator;}
